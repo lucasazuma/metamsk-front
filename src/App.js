@@ -1,7 +1,5 @@
-
 import './App.css';
 import Button from '@mui/material/Button';
-import detectEthereumProvider from '@metamask/detect-provider';
 import api from "./services/api";
 
 function App() {
@@ -11,31 +9,30 @@ function App() {
         return signature;
     }
 
+    async function getUser(address){
+        return await api
+            .get(`/api/v1/users/${address}`)
+            .catch((err) => {
+                console.error("ops! ocorreu um erro" + err);
+            })
+    }
+
     async function connectWallet(){
         if (window.ethereum) { //check if Metamask is installed
             try {
                 const address = await window.ethereum.request({ method: 'eth_requestAccounts' }); //connect Metamask
-                let user = {}
-                const obj = {
-                    connectedStatus: true,
-                    status: "",
-                    address: address
-                }
-                await api
-                    .get(`/api/v1/meta_login/${obj.address}`)
-                    .then((response) => (user = response.data))
-                    .catch((err) => {
-                        console.error("ops! ocorreu um erro" + err);
-                    });
-                if (user.data.nonce){
+                let user = await getUser(address)
+                console.log(user)
+                if (user.data.data.nonce){
                     const requestTime = new Date().getTime();
-                    const signature = await personalSign(obj.address[0], user.data.nonce)
-
-
+                    const signature = await personalSign(address[0], user.data.data.nonce)
+                    api
+                        .post("/api/v1/sessions", { public_address: address, request_time: requestTime, signature: signature  })
+                        .catch((error) => console.log(error));
                 }else{
                     alert('assina ai pai')
                 }
-                return obj;
+                return address;
 
             } catch (error) {
                 return {
